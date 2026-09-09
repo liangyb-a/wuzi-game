@@ -1,0 +1,168 @@
+page {
+  background-color: #fdfeea;
+  height: 100%;
+}
+
+.game-page {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* stage 高度 = 背景图显示高度，内容相对图片定位 */
+.stage {
+  position: relative;
+  width: 100%;
+}
+
+.bg-img {
+  width: 100%;
+  display: block;
+}
+
+/* 导航栏（图顶部标题区） */
+.nav-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 28rpx 10rpx;
+  box-sizing: border-box;
+  z-index: 10;
+}
+.title {
+  font-size: 52rpx;
+  font-weight: bold;
+  color: #3e3221;
+  letter-spacing: 10rpx;
+  text-shadow: 0 2rpx 4rpx rgba(255,255,255,0.6);
+}
+
+/* 当前执棋 */
+.status-pill {
+  position: absolute;
+  top: 200rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255,255,255,0.6);
+  border: 2rpx solid rgba(201,168,108,0.6);
+  border-radius: 40rpx;
+  padding: 10rpx 26rpx;
+  box-shadow: 0 4rpx 12rpx rgba(92,74,46,0.08);
+  z-index: 5;
+}
+.dot {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  margin-right: 14rpx;
+  border: 2rpx solid rgba(0,0,0,0.15);
+  box-sizing: border-box;
+}
+.dot.black {
+  background: radial-gradient(circle at 35% 35%, #666, #000);
+}
+.dot.white {
+  background: radial-gradient(circle at 35% 35%, #fff, #ddd);
+}
+.status-text {
+  font-size: 28rpx;
+  color: #5c4a2e;
+  font-weight: 500;
+}
+
+/* 棋盘卡片 */
+.board-card {
+  position: absolute;
+  top: 280rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 690rpx;
+  padding: 16rpx;
+  background: linear-gradient(145deg, #b08d63, #8c6d48);
+  border-radius: 28rpx;
+  box-shadow: 0 20rpx 60rpx rgba(92,74,46,0.3), inset 0 2rpx 8rpx rgba(255,255,255,0.25);
+  border: 4rpx solid #6e5233;
+  box-sizing: border-box;
+  z-index: 5;
+}
+.game-board {
+  display: block;
+  width: 100%;
+  height: 636rpx;
+  background-color: #f0d9a6;
+  border-radius: 16rpx;
+}
+
+/* 底部操作栏：定位在背景图下部白色区域内（可按图微调 bottom） */
+.action-bar {
+  position: absolute;
+  left: 72rpx;
+  right: 72rpx;
+  bottom: 46rpx;
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.6);
+  border-radius: 28rpx;
+  padding: 22rpx 36rpx;
+  border: 2rpx solid rgba(201,168,108,0.55);
+  box-shadow: 0 6rpx 20rpx rgba(92,74,46,0.1);
+  box-sizing: border-box;
+  z-index: 5;
+}
+.action-btn {
+  width: 172rpx;
+  height: 72rpx;
+  line-height: 68rpx;
+  text-align: center;
+  background: #fff;
+  color: #5c4a2e;
+  font-size: 30rpx;
+  border-radius: 40rpx;
+  border: 3rpx solid #8c6d48;
+  padding: 0;
+  margin: 0;
+  box-shadow: 0 4rpx 12rpx rgba(92,74,46,0.1);
+}
+.action-btn::after {
+  border: none;
+}
+.action-btn.primary {
+  background: #8c6d48;
+  color: #fff;
+  width: 240rpx;
+}
+
+/* 胜负弹窗 */
+.overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.overlay-box {
+  background: #faf5e8;
+  padding: 40rpx 50rpx;
+  border-radius: 24rpx;
+  text-align: center;
+  border: 4rpx solid #c9a86c;
+  box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.25);
+}
+.result {
+  display: block;
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #3e3221;
+  margin-bottom: 28rpx;
+  letter-spacing: 4rpx;
+}

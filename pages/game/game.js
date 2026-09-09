@@ -1,28 +1,39 @@
-// 五子棋主逻辑页面（已添加简单人机 AI）
-const GRID_SIZE = 15; // 15x15 棋盘
-// 画布显示尺寸由 WXSS 决定（686rpx 自适应），物理像素在 setupCanvas 中按 dpr 设置
+// 五子棋对战页面（从首页跳转进入）
+const GRID_SIZE = 15;
+// 五连必胜分值
+const WIN_SCORE = 1000000;
 Page({
   data: {
-    board: [], // 二维数组
-    moves: [], // [{x,y,color}]
-    current: 1, // 1 = 黑, 2 = 白
+    board: [],
+    moves: [],
+    current: 1,
     gameOver: false,
     winner: 0,
-    winCoords: [], // [{x,y} ...] 五子坐标
+    winCoords: [],
     currentTurnText: '黑方',
-    // AI 相关
     aiEnabled: false,
-    aiColor: 2 // AI 默认白方（后手）
+    aiColor: 2,
+    mode: 'pvp',
+    statusBarHeight: 20
   },
 
-  onLoad() {
+  onLoad(options) {
     this.initBoard();
     this.blinkTimer = null;
     this.blinkOn = true;
+    const mode = (options && options.mode) || 'pvp';
+    const info = (wx.getWindowInfo && wx.getWindowInfo()) || wx.getSystemInfoSync();
+    this.setData({ mode, statusBarHeight: info.statusBarHeight || 20 });
+    setTimeout(() => {
+      if (mode === 'ai') {
+        this.startAIGame();
+      } else {
+        this.startGame();
+      }
+    }, 300);
   },
 
   onReady() {
-    // 页面渲染完成后再初始化画布，此时才能拿到节点尺寸
     this.setupCanvas();
   },
 
@@ -49,23 +60,32 @@ Page({
   },
 
   startGame() {
-    // 人人对战
     this.clearBlink();
     this.initBoard();
     this.draw();
   },
 
   startAIGame() {
-    // 开启人机（AI 默认为白方后手），若想让 AI 先手可设置 aiColor=1 并在开局触发 aiMove
     this.clearBlink();
     this.initBoard();
     this.setData({ aiEnabled: true, aiColor: 2 }, () => {
       this.draw();
-      // 如果你希望 AI 先手，把 aiColor 设为 1 并在这里调用 this.aiMove()
       if (this.data.aiEnabled && this.data.current === this.data.aiColor) {
         setTimeout(() => this.aiMove(), 300);
       }
     });
+  },
+
+  exit() {
+    wx.navigateBack({ delta: 1 });
+  },
+
+  replay() {
+    if (this.data.mode === 'ai') {
+      this.startAIGame();
+    } else {
+      this.startGame();
+    }
   },
 
   undo() {
@@ -81,54 +101,42 @@ Page({
     const moves = this.data.moves.slice();
     const board = this.data.board.map(row => row.slice());
 
-    // 如果是 AI 模式，優先撤销 AI 的最后一手并同时撤销玩家的上一步（如果存在），以保持回到玩家回合的状态
     if (this.data.aiEnabled) {
-      // 撤销最后一步
       const last = moves.pop();
       board[last.y][last.x] = 0;
-      // 如果还有一步且上一手是玩家（颜色与 aiColor 不同），则一并撤销，让玩家重新走
       if (moves.length > 0) {
         const prev = moves[moves.length - 1];
         if (prev.color !== this.data.aiColor) {
           const popped = moves.pop();
           board[popped.y][popped.x] = 0;
-          // 现在轮到玩家（popped.color）再走
           this.setData({
             board,
             moves,
             current: popped.color,
             currentTurnText: popped.color === 1 ? '黑方' : '白方'
-          }, () => {
-            this.draw();
-          });
+          }, () => this.draw());
           return;
         }
       }
-      // 如果不能一并撤销（例如刚好玩家还没走），则把上一步颜色设为上一步的颜色
       const current = moves.length > 0 ? moves[moves.length - 1].color === 1 ? 2 : 1 : 1;
       this.setData({
         board,
         moves,
         current,
         currentTurnText: current === 1 ? '黑方' : '白方'
-      }, () => {
-        this.draw();
-      });
+      }, () => this.draw());
       return;
     }
 
-    // 人人模式：撤销最后一步
     const last = moves.pop();
     board[last.y][last.x] = 0;
-    const current = last.color; // 上一手的颜色 -> 现在轮到它
+    const current = last.color;
     this.setData({
       board,
       moves,
       current,
       currentTurnText: current === 1 ? '黑方' : '白方'
-    }, () => {
-      this.draw();
-    });
+    }, () => this.draw());
   },
 
   setupCanvas() {
@@ -137,12 +145,20 @@ Page({
       .fields({ node: true, size: true })
       .exec(res => {
         const info = res && res[0];
-        if (!info || !info.node) return;
+        if (!info || !info.node) {
+          this._canvasRetry = (this._canvasRetry || 0) + 1;
+          if (this._canvasRetry < 10) {
+            setTimeout(() => this.setupCanvas(), 120);
+          } else {
+            console.error('[五子棋] 获取 canvas 节点失败');
+          }
+          return;
+        }
         const canvas = info.node;
         const dpr = (wx.getWindowInfo && wx.getWindowInfo().pixelRatio) || 2;
         const cssW = info.width;
         const cssH = info.height;
-        // 按像素比设置画布物理尺寸，保证高清显示
+        if (!cssW || !cssH) return;
         canvas.width = Math.round(cssW * dpr);
         canvas.height = Math.round(cssH * dpr);
         const ctx = canvas.getContext('2d');
@@ -157,7 +173,6 @@ Page({
     if (this.data.gameOver) return;
     const touch = e.touches && e.touches[0];
     if (!touch) return;
-    // type=2d 画布触摸点自带相对画布左上角的坐标
     const x = touch.x;
     const y = touch.y;
     if (x === undefined || y === undefined) return;
@@ -165,7 +180,6 @@ Page({
   },
 
   handleTapByCanvas(px, py) {
-    // 若 AI 在当前回合，不接受玩家点击
     if (this.data.aiEnabled && this.data.current === this.data.aiColor) return;
 
     const cs = this.canvasSize / (GRID_SIZE - 1);
@@ -174,7 +188,7 @@ Page({
     if (rx < 0 || rx >= GRID_SIZE || ry < 0 || ry >= GRID_SIZE) return;
 
     const board = this.data.board.map(row => row.slice());
-    if (board[ry][rx] !== 0) return; // 已有子
+    if (board[ry][rx] !== 0) return;
     const color = this.data.current;
     board[ry][rx] = color;
     const moves = this.data.moves.slice();
@@ -192,7 +206,6 @@ Page({
         this.onWin(color, win);
         return;
       }
-      // 若是 AI 模式，触发 AI 落子（短延迟）
       if (this.data.aiEnabled && this.data.current === this.data.aiColor) {
         setTimeout(() => this.aiMove(), 300);
       }
@@ -200,7 +213,6 @@ Page({
   },
 
   checkWin(x, y, color) {
-    // 从 (x,y) 检查四个方向，返回五子坐标数组或 null
     const dirs = [
       { dx: 1, dy: 0 },
       { dx: 0, dy: 1 },
@@ -286,11 +298,9 @@ Page({
     const cs = size / (GRID_SIZE - 1);
 
     ctx.clearRect(0, 0, size, size);
-    // 背景（与 CSS 一致，防止闪烁时透出底色差异）
     ctx.fillStyle = '#f0d9a6';
     ctx.fillRect(0, 0, size, size);
 
-    // 棋盘线
     ctx.lineWidth = 1;
     ctx.strokeStyle = '#333';
     ctx.beginPath();
@@ -303,7 +313,6 @@ Page({
     }
     ctx.stroke();
 
-    // 星位
     const starPoints = [3, 7, 11];
     ctx.fillStyle = '#333';
     for (const i of starPoints) {
@@ -314,7 +323,6 @@ Page({
       }
     }
 
-    // 棋子
     const board = this.data.board;
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
@@ -341,7 +349,6 @@ Page({
       }
     }
 
-    // 胜利五子高亮闪烁
     if (this.data.gameOver && this.data.winCoords && this.data.winCoords.length && this.blinkOn) {
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#ff0000';
@@ -355,10 +362,8 @@ Page({
     }
   },
 
-  // AI 相关实现
   aiMove() {
     if (!this.data.aiEnabled || this.data.gameOver) return;
-    // 计算落子
     const best = this.chooseBestMove();
     if (!best) return;
     const board = this.data.board.map(row => row.slice());
@@ -369,7 +374,7 @@ Page({
       board,
       moves,
       current: this.data.aiColor === 1 ? 2 : 1,
-      currentTurnText: (this.data.aiColor === 1 ? '白方' : '黑方') // 之后会被更新为下一个玩家文本
+      currentTurnText: (this.data.aiColor === 1 ? '白方' : '黑方')
     }, () => {
       this.draw();
       const win = this.checkWin(best.x, best.y, this.data.aiColor);
@@ -384,44 +389,51 @@ Page({
     const ai = this.data.aiColor;
     const human = ai === 1 ? 2 : 1;
 
-    // 检查能直接获胜或需立即封堵的点
-    let bestBlock = null;
-    // 权重表：连续个数 -> 分值
-    const weight = { 1: 10, 2: 100, 3: 1000, 4: 10000 };
-
-    let bestScore = -Infinity;
-    let bestMove = null;
-
+    // 候选点：已有棋子周围 2 格内的空点
+    const candidates = [];
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
         if (board[y][x] !== 0) continue;
-        // 若在此落子，检查是否能直接获胜（AI）
-        if (this.willWinOnBoard(board, x, y, ai)) {
-          return { x, y }; // 立即获胜直接返回
-        }
-        // 若人落子在此能直接获胜，则这是一个必须封堵的位置
-        if (this.willWinOnBoard(board, x, y, human)) {
-          bestBlock = { x, y };
-          // 先记录但不必立刻返回 — 继续寻找必赢点
-        }
-
-        // 评分函数：计算连珠长度（简单版，不区分活/死）
-        const scoreFor = this.evalPoint(board, x, y, ai, weight);
-        const scoreAgainst = this.evalPoint(board, x, y, human, weight);
-        const score = scoreFor - scoreAgainst;
-        if (score > bestScore) {
-          bestScore = score;
-          bestMove = { x, y };
+        if (this.nearPiece(board, x, y)) {
+          candidates.push({ x, y });
         }
       }
     }
-
-    if (bestMove) {
-      // 若无必赢点但有必须封堵点，优先堵
-      if (bestBlock) return bestBlock;
-      return bestMove;
+    // 空棋盘（AI 先手兜底）走天元
+    if (candidates.length === 0) {
+      return { x: 7, y: 7 };
     }
-    // 若没找到（极罕见），返回第一个空格
+
+    let best = null;
+    let bestScore = -Infinity;
+    let mustBlock = null;
+
+    for (const p of candidates) {
+      // 我方在此点的进攻价值
+      const attack = this.evalPoint(board, p.x, p.y, ai);
+      // 对方在此点的进攻价值（即我需要防守的威胁度）
+      const defense = this.evalPoint(board, p.x, p.y, human);
+
+      // 能直接五连：立即赢
+      if (attack >= WIN_SCORE) {
+        return p;
+      }
+      // 对方在这点直接五连：必须抢占（我方没有直接赢的着法时）
+      if (defense >= WIN_SCORE) {
+        if (!mustBlock) mustBlock = p;
+        continue;
+      }
+      // 攻防加权：进攻略优先，同时把“双威胁点”通过多条线求和自然放大
+      const score = attack * 1.2 + defense;
+      if (score > bestScore) {
+        bestScore = score;
+        best = p;
+      }
+    }
+
+    if (mustBlock) return mustBlock;
+    if (best) return best;
+    // 兜底：第一个空点
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
         if (board[y][x] === 0) return { x, y };
@@ -430,33 +442,22 @@ Page({
     return null;
   },
 
-  // 在给定 board 上判断放在 (x,y) 后是否获胜（不修改原 board）
-  willWinOnBoard(board, x, y, color) {
-    const dirs = [
-      { dx: 1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: 1, dy: 1 },
-      { dx: 1, dy: -1 }
-    ];
-    for (let d of dirs) {
-      let count = 1;
-      let px = x + d.dx, py = y + d.dy;
-      while (this.inBoard(px, py) && (board[py][px] === color)) {
-        count++;
-        px += d.dx; py += d.dy;
+  nearPiece(board, x, y) {
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE && board[ny][nx] !== 0) {
+          return true;
+        }
       }
-      px = x - d.dx; py = y - d.dy;
-      while (this.inBoard(px, py) && (board[py][px] === color)) {
-        count++;
-        px -= d.dx; py -= d.dy;
-      }
-      if (count >= 5) return true;
     }
     return false;
   },
 
-  // 简单评估点的价值：对四个方向计算连续子数并累加权重
-  evalPoint(board, x, y, color, weight) {
+  // 模式识别评估：沿 4 个方向统计“连子长度 + 开放端数”，映射到分级权重
+  evalPoint(board, x, y, color) {
     const dirs = [
       { dx: 1, dy: 0 },
       { dx: 0, dy: 1 },
@@ -465,19 +466,37 @@ Page({
     ];
     let total = 0;
     for (let d of dirs) {
-      let count = 1; // 包括当前点
+      let count = 1;
+      let open = 0;
+      // 正向延伸
       let px = x + d.dx, py = y + d.dy;
       while (this.inBoard(px, py) && board[py][px] === color) {
         count++;
-        px += d.dx; py += d.dy;
+        px += d.dx;
+        py += d.dy;
       }
-      px = x - d.dx; py = y - d.dy;
+      if (this.inBoard(px, py) && board[py][px] === 0) open++;
+      // 反向延伸
+      px = x - d.dx;
+      py = y - d.dy;
       while (this.inBoard(px, py) && board[py][px] === color) {
         count++;
-        px -= d.dx; py -= d.dy;
+        px -= d.dx;
+        py -= d.dy;
       }
-      if (count > 4) count = 4;
-      total += (weight[count] || 0);
+      if (this.inBoard(px, py) && board[py][px] === 0) open++;
+
+      if (count >= 5) {
+        total += WIN_SCORE;
+      } else if (count === 4) {
+        total += open >= 2 ? 100000 : open === 1 ? 10000 : 0; // 活四 / 冲四
+      } else if (count === 3) {
+        total += open >= 2 ? 5000 : open === 1 ? 500 : 0;     // 活三 / 眠三
+      } else if (count === 2) {
+        total += open >= 2 ? 400 : open === 1 ? 100 : 0;      // 活二 / 眠二
+      } else {
+        total += 10;
+      }
     }
     return total;
   }

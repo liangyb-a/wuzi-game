@@ -37,14 +37,14 @@
     "packNpmRelationList": [],
     "minifyWXSS": true,
     "disableUseStrict": false,
-    "useStaticServer": false,
     "showES6CompileOption": false,
     "useCompilerPlugins": false,
-    "ignoreUploadUnusedFiles": true
+    "ignoreUploadUnusedFiles": true,
+    "minifyWXML": true
   },
   "compileType": "miniprogram",
   "libVersion": "3.14.3",
-  "appid": "test",
+  "appid": "wxdd0bdc6267cf0647",
   "projectname": "wuzi-game",
   "debugOptions": {
     "hidedInDevtools": []

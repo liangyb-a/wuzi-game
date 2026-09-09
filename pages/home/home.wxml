@@ -1,0 +1,51 @@
+<view class="home-page">
+  <!-- stage：以背景图实际显示尺寸为画布，内容相对图片定位 -->
+  <view class="stage">
+    <!-- 全屏背景图（完整显示，撑开画布高度） -->
+    <image class="bg-img" src="/images/bg.jpg" mode="widthFix"></image>
+
+    <!-- 导航栏（图上顶部标题区） -->
+    <view class="nav-bar" style="padding-top: {{statusBarHeight}}px;">
+      <view class="title-wrap">
+        <text class="title">五子棋</text>
+      </view>
+    </view>
+
+    <!-- 用户信息 -->
+    <view class="user-card">
+      <view class="avatar"></view>
+      <view class="user-info">
+        <view class="score-line">
+          <text class="score">积分 999</text>
+          <text class="record">胜率 9:6</text>
+        </view>
+        <view class="stars">★★★★★ 36</view>
+      </view>
+    </view>
+
+    <!-- 棋盘展示区 -->
+    <view class="board-card">
+      <canvas type="2d" id="home-board" class="home-board"></canvas>
+    </view>
+
+    <!-- 底部功能菜单（落在图底部白色区域内） -->
+    <view class="menu-grid">
+      <view class="menu-item" bindtap="startAI">
+        <view class="icon ai">🤖</view>
+        <text class="label">人机对战</text>
+      </view>
+      <view class="menu-item" bindtap="startPVP">
+        <view class="icon pvp">👥</view>
+        <text class="label">双人对战</text>
+      </view>
+      <view class="menu-item" bindtap="dailyChallenge">
+        <view class="icon challenge">📅</view>
+        <text class="label">每日挑战</text>
+      </view>
+      <view class="menu-item" bindtap="showRules">
+        <view class="icon rules">📜</view>
+        <text class="label">规则说明</text>
+      </view>
+    </view>
+  </view>
+</view>

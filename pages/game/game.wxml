@@ -1,0 +1,38 @@
+<view class="game-page">
+  <!-- stage：以背景图实际显示尺寸为画布，内容相对图片定位 -->
+  <view class="stage">
+    <!-- 全屏背景图（完整显示，撑开画布高度） -->
+    <image class="bg-img" src="/images/bg.jpg" mode="widthFix"></image>
+
+    <!-- 导航栏（图顶部标题区） -->
+    <view class="nav-bar" style="padding-top: {{statusBarHeight}}px;">
+      <view class="title">五子棋</view>
+    </view>
+
+    <!-- 当前执棋提示 -->
+    <view class="status-pill">
+      <view class="dot {{current === 1 ? 'black' : 'white'}}"></view>
+      <text class="status-text">当前执棋：{{currentTurnText}}</text>
+    </view>
+
+    <!-- 棋盘 -->
+    <view class="board-card">
+      <canvas type="2d" id="board" class="game-board" bindtouchstart="onCanvasTap"></canvas>
+    </view>
+
+    <!-- 底部操作栏（落在图底部白色区域内） -->
+    <view class="action-bar">
+      <button class="action-btn" bindtap="exit">退出</button>
+      <button class="action-btn" bindtap="replay">重玩</button>
+      <button class="action-btn" bindtap="undo">悔棋</button>
+    </view>
+
+    <!-- 胜负弹窗 -->
+    <view class="overlay" wx:if="{{gameOver}}">
+      <view class="overlay-box">
+        <text class="result">{{winnerText}}</text>
+        <button class="action-btn primary" bindtap="replay">再来一局</button>
+      </view>
+    </view>
+  </view>
+</view>

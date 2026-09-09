@@ -1,6 +1,7 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/home/home",
+    "pages/game/game"
   ],
   "window": {
     "navigationBarTitleText": "五子棋",
