@@ -1,5 +1,6 @@
 .container {
-  padding: 16px;
+  padding: 12px;
+  box-sizing: border-box;
 }
 
 .toolbar {
@@ -27,12 +28,13 @@
   align-items: center;
 }
 
-/* canvas 容器尺寸（会用 JS 设定实际 canvas 物理像素） */
+/* canvas 显示尺寸（rpx 自适应屏幕宽度，JS 会按像素比设定物理像素） */
 canvas {
-  width: 450px;
-  height: 450px;
+  display: block;
+  width: 686rpx;
+  height: 686rpx;
   background-color: #f0d9a6; /* 木纹色板 */
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 /* 覆盖层（游戏结束） */

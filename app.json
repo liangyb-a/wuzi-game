@@ -3,6 +3,8 @@
     "pages/index/index"
   ],
   "window": {
-    "navigationBarTitleText": "五子棋"
-  }
+    "navigationBarTitleText": "五子棋",
+    "backgroundColor": "#f5f5f5"
+  },
+  "sitemapLocation": "sitemap.json"
 }

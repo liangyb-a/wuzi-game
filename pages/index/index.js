@@ -1,6 +1,6 @@
 // 五子棋主逻辑页面（已添加简单人机 AI）
 const GRID_SIZE = 15; // 15x15 棋盘
-const CANVAS_DISPLAY_SIZE = 450; // CSS 显示像素（与样式一致）
+// 画布显示尺寸由 WXSS 决定（686rpx 自适应），物理像素在 setupCanvas 中按 dpr 设置
 Page({
   data: {
     board: [], // 二维数组
@@ -19,10 +19,11 @@ Page({
     this.initBoard();
     this.blinkTimer = null;
     this.blinkOn = true;
-    setTimeout(() => {
-      this.setupCanvas();
-      this.draw();
-    }, 60);
+  },
+
+  onReady() {
+    // 页面渲染完成后再初始化画布，此时才能拿到节点尺寸
+    this.setupCanvas();
   },
 
   onUnload() {
@@ -131,32 +132,36 @@ Page({
   },
 
   setupCanvas() {
-    const query = wx.createSelectorQuery();
-    query.select('#board').boundingClientRect(rect => {
-      if (!rect) return;
-      const displayW = rect.width || CANVAS_DISPLAY_SIZE;
-      const canvasId = 'board';
-      const ratio = wx.getSystemInfoSync().pixelRatio || 1;
-      this.canvasSize = displayW;
-      this.canvasRatio = ratio;
-      this.cellSize = this.canvasSize / (GRID_SIZE - 1);
-      this.ctx = wx.createCanvasContext(canvasId, this);
-      this.draw();
-    }).exec();
+    wx.createSelectorQuery()
+      .select('#board')
+      .fields({ node: true, size: true })
+      .exec(res => {
+        const info = res && res[0];
+        if (!info || !info.node) return;
+        const canvas = info.node;
+        const dpr = (wx.getWindowInfo && wx.getWindowInfo().pixelRatio) || 2;
+        const cssW = info.width;
+        const cssH = info.height;
+        // 按像素比设置画布物理尺寸，保证高清显示
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        this.ctx = ctx;
+        this.canvasSize = cssW;
+        this.draw();
+      });
   },
 
   onCanvasTap(e) {
     if (this.data.gameOver) return;
-    const touch = e.touches[0];
-    const query = wx.createSelectorQuery();
-    query.select('#board').boundingClientRect(rect => {
-      if (!rect) return;
-      const left = rect.left;
-      const top = rect.top;
-      const x = touch.clientX - left;
-      const y = touch.clientY - top;
-      this.handleTapByCanvas(x, y);
-    }).exec();
+    const touch = e.touches && e.touches[0];
+    if (!touch) return;
+    // type=2d 画布触摸点自带相对画布左上角的坐标
+    const x = touch.x;
+    const y = touch.y;
+    if (x === undefined || y === undefined) return;
+    this.handleTapByCanvas(x, y);
   },
 
   handleTapByCanvas(px, py) {
@@ -274,40 +279,42 @@ Page({
   },
 
   draw() {
-    if (!this.ctx) return;
     const ctx = this.ctx;
-    const size = this.canvasSize || CANVAS_DISPLAY_SIZE;
+    if (!ctx) return;
+    const size = this.canvasSize;
+    if (!size) return;
     const cs = size / (GRID_SIZE - 1);
-    const ratio = this.canvasRatio || 1;
 
     ctx.clearRect(0, 0, size, size);
-    ctx.save();
-    ctx.scale(ratio, ratio);
+    // 背景（与 CSS 一致，防止闪烁时透出底色差异）
+    ctx.fillStyle = '#f0d9a6';
+    ctx.fillRect(0, 0, size, size);
 
-    ctx.setLineWidth(1);
-    ctx.setStrokeStyle('#333');
+    // 棋盘线
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#333';
     ctx.beginPath();
     for (let i = 0; i < GRID_SIZE; i++) {
-      const pos = i * cs + 0.5;
-      ctx.moveTo(pos, 0.5);
-      ctx.lineTo(pos, size - 0.5);
-      ctx.moveTo(0.5, pos);
-      ctx.lineTo(size - 0.5, pos);
+      const pos = i * cs;
+      ctx.moveTo(pos, 0);
+      ctx.lineTo(pos, size);
+      ctx.moveTo(0, pos);
+      ctx.lineTo(size, pos);
     }
     ctx.stroke();
-    ctx.closePath();
 
+    // 星位
     const starPoints = [3, 7, 11];
-    ctx.setFillStyle('#333');
-    for (let i of starPoints) {
-      for (let j of starPoints) {
+    ctx.fillStyle = '#333';
+    for (const i of starPoints) {
+      for (const j of starPoints) {
         ctx.beginPath();
         ctx.arc(i * cs, j * cs, 4, 0, Math.PI * 2);
         ctx.fill();
-        ctx.closePath();
       }
     }
 
+    // 棋子
     const board = this.data.board;
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
@@ -315,41 +322,37 @@ Page({
         if (v === 0) continue;
         const px = x * cs;
         const py = y * cs;
-        ctx.beginPath();
         const rad = cs * 0.42;
+        ctx.beginPath();
         ctx.arc(px, py, rad, 0, Math.PI * 2);
-        ctx.closePath();
         if (v === 1) {
           const g = ctx.createLinearGradient(px - rad, py - rad, px + rad, py + rad);
           g.addColorStop(0, '#555');
           g.addColorStop(1, '#000');
-          ctx.setFillStyle(g);
+          ctx.fillStyle = g;
           ctx.fill();
         } else {
-          ctx.setFillStyle('#fff');
+          ctx.fillStyle = '#fff';
           ctx.fill();
-          ctx.setStrokeStyle('#999');
-          ctx.setLineWidth(1);
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#999';
           ctx.stroke();
         }
       }
     }
 
-    if (this.data.gameOver && this.data.winCoords && this.blinkOn) {
-      ctx.setStrokeStyle('#ff0000');
-      ctx.setLineWidth(4);
-      for (let p of this.data.winCoords) {
+    // 胜利五子高亮闪烁
+    if (this.data.gameOver && this.data.winCoords && this.data.winCoords.length && this.blinkOn) {
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ff0000';
+      for (const p of this.data.winCoords) {
         const px = p.x * cs;
         const py = p.y * cs;
         ctx.beginPath();
         ctx.arc(px, py, cs * 0.48, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.closePath();
       }
     }
-
-    ctx.restore();
-    ctx.draw();
   },
 
   // AI 相关实现

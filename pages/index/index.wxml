@@ -7,7 +7,7 @@
   </view>
 
   <view class="board-wrap">
-    <canvas canvas-id="board" id="board" bindtouchstart="onCanvasTap"></canvas>
+    <canvas type="2d" id="board" bindtouchstart="onCanvasTap"></canvas>
   </view>
 
   <view class="overlay" wx:if="{{gameOver}}">
